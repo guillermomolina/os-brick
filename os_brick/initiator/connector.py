@@ -65,6 +65,8 @@ connector_list = [
     'os_brick.initiator.connectors.vrtshyperscale.HyperScaleConnector',
     'os_brick.initiator.connectors.storpool.StorPoolConnector',
     'os_brick.initiator.connectors.nvme.NVMeConnector',
+    'os_brick.initiator.solaris.base.BaseSolarisConnector',
+    'os_brick.initiator.solaris.fibre_channel.SolarisFCConnector',
 ]
 
 # Mappings used to determine who to construct in the factory
@@ -176,6 +178,11 @@ _connector_mapping_windows = {
         'os_brick.initiator.windows.smbfs.WindowsSMBFSConnector',
 }
 
+# Mapping for the solaris connectors
+_connector_mapping_solaris = {
+    initiator.FIBRE_CHANNEL:
+        'os_brick.initiator.solaris.fibre_channel.SolarisFCConnector',
+}
 
 # Create aliases to the old names until 2.0.0
 # TODO(smcginnis) Remove this lookup once unit test code is updated to
@@ -220,7 +227,7 @@ def get_connector_properties(root_helper, my_ip, multipath, enforce_multipath,
 
     for item in connector_list:
         connector = importutils.import_class(item)
-
+        
         if (utils.platform_matches(props['platform'], connector.platform) and
            utils.os_matches(props['os_type'], connector.os_type)):
             props = utils.merge_dict(props,
@@ -248,6 +255,8 @@ def get_connector_mapping(arch=None):
         arch = platform.machine()
 
     # Set the correct mapping for imports
+    if sys.platform == 'sunos5':
+        return _connector_mapping_solaris
     if sys.platform == 'win32':
         return _connector_mapping_windows
     elif arch in (initiator.S390, initiator.S390X):
@@ -296,7 +305,7 @@ class InitiatorConnector(object):
         connector = _mapping.get(protocol)
         if not connector:
             msg = (_("Invalid InitiatorConnector protocol "
-                     "specified %(protocol)s") %
+                     "specified %(protocol)s") % 
                    dict(protocol=protocol))
             raise exception.InvalidConnectorProtocol(msg)
 
